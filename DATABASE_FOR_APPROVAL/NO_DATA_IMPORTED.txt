@@ -1,0 +1,5 @@
+Approval package only.
+
+No Google Drive TXT file, Event Log row, or current IndexedDB record has been
+inserted into PostgreSQL. Review DATABASE_DESIGN.md and postgresql_schema.sql
+before enabling an upload/import stage.

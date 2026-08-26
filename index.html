@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Offline date-wise analyser for CCB brake system Event Log text reports."
+    />
+    <title>CCB Fault Analyser</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <button class="options-trigger" id="options-trigger" type="button" aria-controls="options-drawer" aria-expanded="false">
+        <span aria-hidden="true">☰</span> Options
+      </button>
+      <a class="brand" href="#" aria-label="CCB Fault Analyser home">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span>
+          <strong>CCB Fault Analyser</strong>
+        </span>
+      </a>
+      <div class="header-status">
+        <span class="privacy-label"><i></i> Offline processing</span>
+      </div>
+    </header>
+
+    <div class="options-backdrop" id="options-backdrop" hidden>
+      <aside class="options-drawer" id="options-drawer" aria-labelledby="options-title">
+        <div class="options-drawer-header">
+          <div><small>CCB ANALYSER</small><h2 id="options-title">Options</h2></div>
+          <button class="drawer-close" id="options-close" type="button" aria-label="Close options">×</button>
+        </div>
+        <nav class="drawer-section" aria-label="Data views">
+          <span class="drawer-label">Data views</span>
+          <button class="drawer-view-button is-active" data-drawer-tab="faults" type="button">Chronological Event Log</button>
+          <button class="drawer-view-button" data-drawer-tab="population" type="button">Data Population</button>
+          <button class="drawer-view-button" data-drawer-tab="events" type="button">All Event Log Data</button>
+          <button class="drawer-view-button" data-drawer-tab="analysis" type="button">Analysis of Data</button>
+          <button class="drawer-view-button" data-drawer-tab="statistics" type="button">Statistics</button>
+          <button class="drawer-view-button" data-drawer-tab="database" type="button">Fleet Database View</button>
+          <button class="drawer-view-button" data-drawer-tab="guide" type="button">Understand Algorithm</button>
+        </nav>
+        <div class="drawer-section">
+          <span class="drawer-label">Upload</span>
+          <button class="drawer-action-button" id="drawer-upload-files" type="button">Upload TXT files</button>
+          <button class="drawer-action-button" id="drawer-upload-folder" type="button">Upload Bulk Folder</button>
+        </div>
+        <div class="drawer-section">
+          <span class="drawer-label">Stored data</span>
+        <button class="header-log-button" id="header-database-button" type="button">
+          <span aria-hidden="true">▦</span> Fleet Database <strong id="header-database-count">0</strong>
+        </button>
+        <button class="header-log-button view-loco-button" id="header-view-loco-button" type="button">
+          <span aria-hidden="true">⌕</span> View Loco Data
+        </button>
+        <button class="header-log-button" id="header-loading-log-button" type="button" hidden>
+          <span aria-hidden="true">▤</span> View Loading Log
+        </button>
+        <button class="header-log-button" id="header-stored-fault-button" type="button" hidden>
+          <span aria-hidden="true">▦</span> View Stored Fault Log
+        </button>
+        <span class="stored-version" id="stored-version" hidden>
+          Last software version <strong id="stored-version-value">—</strong>
+        </span>
+        </div>
+      </aside>
+    </div>
+
+    <main>
+      <section class="upload-card" id="upload-card" aria-labelledby="upload-title">
+        <div class="upload-copy">
+          <span class="step-number">01</span>
+          <div>
+            <h2 id="upload-title">Load diagnostic reports</h2>
+            <button class="existing-data-button" id="view-existing-data" type="button">
+              <span>View Existing Data</span>
+              <small>Open stored locomotives and select one to view its Event Log</small>
+            </button>
+            <p>Single or bulk TXT upload · processed and stored only in this browser</p>
+          </div>
+        </div>
+        <div class="upload-options">
+          <label class="drop-zone" id="drop-zone" for="file-input">
+            <input id="file-input" type="file" accept=".txt,text/plain" multiple />
+            <span class="upload-icon" aria-hidden="true">⇧</span>
+            <span class="drop-primary">Drop one or several .txt files here</span>
+            <span class="drop-secondary">or click to select single / bulk reports from your computer</span>
+            <span class="select-button">Choose TXT files</span>
+          </label>
+          <label class="folder-upload" id="folder-upload" for="folder-input">
+            <input id="folder-input" type="file" webkitdirectory directory multiple />
+            <span class="folder-upload-icon" aria-hidden="true">▣</span>
+            <span class="folder-upload-copy">
+              <strong>Upload Bulk Folder</strong>
+              <small>Searches all nested subfolders for TXT files and ignores every other file type.</small>
+            </span>
+            <span class="select-button">Choose folder</span>
+          </label>
+        </div>
+        <p class="upload-message" id="upload-message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="dashboard" id="dashboard" hidden aria-live="polite">
+        <div class="report-heading">
+          <div>
+            <p class="eyebrow">ANALYSIS READY</p>
+            <h2 id="report-title">Event Log report</h2>
+            <p id="report-meta"></p>
+          </div>
+          <div class="report-actions">
+            <aside class="software-version-card" aria-label="Software version used while downloading data">
+              <span>Software version</span>
+              <strong id="software-version">—</strong>
+              <small>Used while downloading data · saved locally</small>
+            </aside>
+            <button class="loading-log-button" id="loading-log-button" type="button">
+              <span aria-hidden="true">▤</span>
+              <span>View Loading Log</span>
+              <strong id="loading-log-count">0</strong>
+            </button>
+            <button class="loading-log-button" id="stored-fault-log-button" type="button">
+              <span aria-hidden="true">▦</span>
+              <span>View Stored Fault Log Data</span>
+              <strong id="stored-fault-log-count">0</strong>
+            </button>
+            <button class="secondary-button" id="change-file" type="button">Change file</button>
+          </div>
+        </div>
+
+        <div class="metric-grid" aria-label="Report summary">
+          <article class="metric metric-alert">
+            <span>Fault activations</span>
+            <strong id="metric-faults">0</strong>
+            <small>Event rows marked Fail</small>
+          </article>
+          <article class="metric">
+            <span>Fault dates</span>
+            <strong id="metric-dates">0</strong>
+            <small>Dates containing a failure</small>
+          </article>
+          <article class="metric">
+            <span>Cleared faults</span>
+            <strong id="metric-cleared">0</strong>
+            <small id="metric-clear-rate">0% of failures</small>
+          </article>
+          <article class="metric">
+            <span>Event records</span>
+            <strong id="metric-events">0</strong>
+            <small id="metric-range">—</small>
+          </article>
+        </div>
+
+        <div class="workspace-card">
+          <div class="tabs" role="tablist" aria-label="Analysis views">
+            <button class="tab is-active" id="faults-tab" role="tab" aria-selected="true" aria-controls="faults-panel" data-tab="faults" type="button">
+              Chronological Event Log <span id="fault-tab-count">0</span>
+            </button>
+            <button class="tab" id="population-tab" role="tab" aria-selected="false" aria-controls="population-panel" data-tab="population" type="button">
+              Data Population <span id="population-tab-count">0</span>
+            </button>
+            <button class="tab" id="events-tab" role="tab" aria-selected="false" aria-controls="events-panel" data-tab="events" type="button">
+              All Event Log data <span id="event-tab-count">0</span>
+            </button>
+            <button class="tab" id="analysis-tab" role="tab" aria-selected="false" aria-controls="analysis-panel" data-tab="analysis" type="button">
+              Analysis of Data
+            </button>
+            <button class="tab" id="statistics-tab" role="tab" aria-selected="false" aria-controls="statistics-panel" data-tab="statistics" type="button">
+              Statistics
+            </button>
+            <button class="tab" id="database-tab" role="tab" aria-selected="false" aria-controls="database-panel" data-tab="database" type="button">
+              Fleet Database <span id="database-tab-count">0</span>
+            </button>
+            <button class="tab" id="guide-tab" role="tab" aria-selected="false" aria-controls="guide-panel" data-tab="guide" type="button">
+              Understand Algorithm
+            </button>
+          </div>
+
+          <section class="tab-panel" id="faults-panel" role="tabpanel" aria-labelledby="faults-tab">
+            <div class="panel-toolbar">
+              <label class="search-control">
+                <span class="sr-only">Search events</span>
+                <span aria-hidden="true">⌕</span>
+                <input id="fault-search" type="search" placeholder="Search record, code, description, mode, or state" />
+              </label>
+              <label class="select-control">
+                <span>Date</span>
+                <select id="fault-date-filter"><option value="all">All event dates</option></select>
+              </label>
+              <label class="select-control sort-control">
+                <span>Sort by</span>
+                <select id="fault-sort">
+                  <option value="timestamp:asc">Time — oldest first</option>
+                  <option value="timestamp:desc">Time — newest first</option>
+                  <option value="record:asc">Record — low to high</option>
+                  <option value="record:desc">Record — high to low</option>
+                  <option value="event:asc">Event code — A to Z</option>
+                  <option value="event:desc">Event code — Z to A</option>
+                  <option value="description:asc">Description — A to Z</option>
+                  <option value="description:desc">Description — Z to A</option>
+                  <option value="state:asc">State — A to Z</option>
+                  <option value="state:desc">State — Z to A</option>
+                  <option value="mode:asc">Mode — A to Z</option>
+                  <option value="mode:desc">Mode — Z to A</option>
+                </select>
+              </label>
+              <div class="check-filter" id="fault-check-filter">
+                <span>Filter</span>
+                <button class="check-filter-button" id="fault-filter-button" type="button" aria-expanded="false" aria-controls="fault-filter-menu">
+                  <span aria-hidden="true">☑</span>
+                  <strong id="fault-filter-button-text">Select all</strong>
+                  <i aria-hidden="true">▾</i>
+                </button>
+                <div class="check-filter-menu" id="fault-filter-menu" hidden>
+                  <div class="check-filter-heading">
+                    <strong>Filter Event Log</strong>
+                    <small>Tick the records to display</small>
+                  </div>
+                  <label class="select-all-option">
+                    <input id="fault-filter-select-all" type="checkbox" checked />
+                    <span><strong>Select all</strong><small>Show every Event Log record</small></span>
+                  </label>
+                  <div class="check-filter-section">
+                    <strong>State</strong>
+                    <div id="fault-state-options"></div>
+                  </div>
+                  <div class="check-filter-section">
+                    <strong>Event code / description</strong>
+                    <div id="fault-event-options"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="export-actions">
+                <button class="export-button excel-button" id="export-faults-excel" type="button">Download Excel</button>
+                <button class="export-button pdf-button" id="export-faults-pdf" type="button">Download PDF</button>
+              </div>
+            </div>
+            <div class="chronology-callout">
+              <strong>Event Log — every record in chronological order</strong>
+              <span>Nothing is omitted: Power Up (On), Fail, and Pass records all appear here. Stored Fault Log counters remain separate in the top-right viewer.</span>
+            </div>
+            <div class="result-note" id="fault-result-note"></div>
+            <div class="table-scroll" id="fault-log-wrap">
+              <table class="data-table chronological-fault-table">
+                <thead>
+                  <tr>
+                    <th>S/N</th><th>Event date</th><th>Event time</th><th>Event</th><th>Description</th>
+                    <th>State</th><th>Cleared at</th><th>Duration</th><th>Mode</th><th>Record</th>
+                    <th>MRT<small>kg/cm²</small></th><th>BPT<small>kg/cm²</small></th><th>BPalt<small>kg/cm²</small></th><th>ERT<small>kg/cm²</small></th><th>20TL<small>kg/cm²</small></th><th>20TT<small>kg/cm²</small></th>
+                    <th>10T<small>kg/cm²</small></th><th>BCT<small>kg/cm²</small></th><th>FLT<small>kg/cm²</small></th>
+                  </tr>
+                </thead>
+                <tbody id="fault-log-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="fault-empty" hidden>
+              <strong>No matching events</strong>
+              <p>Change the search, date, or checkbox filter to see more Event Log records.</p>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="population-panel" role="tabpanel" aria-labelledby="population-tab" hidden>
+            <div class="panel-toolbar">
+              <label class="search-control">
+                <span class="sr-only">Search populated fault data</span>
+                <span aria-hidden="true">⌕</span>
+                <input id="population-search" type="search" placeholder="Search event code, state, or description" />
+              </label>
+              <div class="export-actions">
+                <button class="export-button excel-button" id="export-population-excel" type="button">Download Excel</button>
+                <button class="export-button pdf-button" id="export-population-pdf" type="button">Download PDF</button>
+              </div>
+            </div>
+            <div class="population-callout">
+              <strong>Occurrence-wise Event Log population</strong>
+              <span>Includes On, Fail, Pass, and any other state. Click a row to reveal every occurrence and its environment / pressure data.</span>
+            </div>
+            <div class="result-note" id="population-result-note"></div>
+            <div class="table-scroll" id="population-table-wrap">
+              <table class="data-table population-table">
+                <thead>
+                  <tr><th></th><th>Rank</th><th>Event</th><th>Description</th><th>State</th><th>Total occurrences</th><th>Event dates</th><th>Cleared faults</th><th>Unresolved faults</th><th>First occurrence</th><th>Last occurrence</th></tr>
+                </thead>
+                <tbody id="population-table-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="population-empty" hidden>
+              <strong>No matching populated Event Log data</strong>
+              <p>Change the search to see more results.</p>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="events-panel" role="tabpanel" aria-labelledby="events-tab" hidden>
+            <div class="panel-toolbar">
+              <label class="search-control">
+                <span class="sr-only">Search all events</span>
+                <span aria-hidden="true">⌕</span>
+                <input id="event-search" type="search" placeholder="Search event code or description" />
+              </label>
+              <label class="select-control">
+                <span>State</span>
+                <select id="state-filter">
+                  <option value="all">All states</option>
+                </select>
+              </label>
+              <label class="select-control">
+                <span>Date</span>
+                <select id="event-date-filter"><option value="all">All dates</option></select>
+              </label>
+              <div class="export-actions">
+                <button class="export-button excel-button" id="export-events-excel" type="button">Download Excel</button>
+                <button class="export-button pdf-button" id="export-events-pdf" type="button">Download PDF</button>
+              </div>
+            </div>
+            <div class="result-note" id="event-result-note"></div>
+            <div class="table-scroll">
+              <table class="data-table event-table">
+                <thead>
+                  <tr>
+                    <th>Num</th>
+                    <th><abbr title="Main Reservoir Transducer (BPCP)">MRT</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="Brake Pipe Transducer (BPCP)">BPT</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="Train-line Brake Pipe Transducer (ERCP)">BPalt</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="Equalising Reservoir Transducer (ERCP)">ERT</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="20 Train Line (20CP)">20TL</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="20 Pipe Transducer (20CP)">20TT</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="10 Pipe Transducer (ERCP)">10T</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="Brake Cylinder Transducer (ERCP)">BCT</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="Flow Transducer (BPCP)">FLT</abbr><small>kg/cm²</small></th>
+                    <th><abbr title="Mode at the time of the event">Mode</abbr></th>
+                    <th><abbr title="Event state: Fail, Pass, or On">State</abbr></th>
+                    <th>Time Stamp</th><th>Event</th><th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="event-table-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="event-empty" hidden>
+              <strong>No matching events</strong>
+              <p>Change the search, state, or date filter to see more results.</p>
+            </div>
+          </section>
+
+          <section class="tab-panel fleet-analysis-panel" id="analysis-panel" role="tabpanel" aria-labelledby="analysis-tab" hidden>
+            <div class="fleet-analysis-heading">
+              <div>
+                <p class="eyebrow">ENTIRE STORED DATABASE</p>
+                <h3>Fault occurrence analysis by locomotive</h3>
+                <p>Each row is one fault, each locomotive is a column, and every cell shows how many times that fault occurred. Faults are ranked from the highest total occurrence count to the lowest.</p>
+              </div>
+              <button class="secondary-button" id="refresh-fleet-analysis" type="button">Refresh analysis</button>
+            </div>
+            <div class="fleet-analysis-summary" id="fleet-analysis-summary">Loading stored fault analysis&hellip;</div>
+            <div class="matrix-fault-filter-menu" id="matrix-fault-filter-menu" hidden>
+              <div class="check-filter-heading"><strong>Fault name filter</strong><small>All faults are selected by default</small></div>
+              <label class="select-all-option"><input id="matrix-fault-select-all" type="checkbox" checked /><span><strong>Select all faults</strong><small>Show every fault row</small></span></label>
+              <div id="matrix-fault-options"></div>
+            </div>
+            <div class="table-scroll fleet-matrix-wrap" id="fleet-matrix-wrap" hidden>
+              <table class="data-table fleet-matrix-table">
+                <thead id="fleet-matrix-head"></thead>
+                <tbody id="fleet-matrix-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="fleet-analysis-empty" hidden>
+              <strong>No stored fault occurrences</strong>
+              <p>Upload one or more valid CCB Event Log TXT reports to populate this analysis.</p>
+            </div>
+          </section>
+
+          <section class="tab-panel statistics-panel" id="statistics-panel" role="tabpanel" aria-labelledby="statistics-tab" hidden>
+            <div class="statistics-title-row">
+              <div><strong>Fleet statistics</strong><span>Complete stored database totals</span></div>
+              <button class="secondary-button" id="refresh-statistics" type="button">Refresh</button>
+            </div>
+            <div class="statistics-grid">
+              <article><span>Locomotives</span><strong id="statistics-locomotives">0</strong><small>Fleet master records</small></article>
+              <article><span>Stored reports</span><strong id="statistics-reports">0</strong><small>Accepted source reports</small></article>
+              <article><span>Event records</span><strong id="statistics-events">0</strong><small>On, Fail and Pass rows</small></article>
+              <article><span>Fault activations</span><strong id="statistics-faults">0</strong><small>Rows marked Fail</small></article>
+              <article><span>Cleared faults</span><strong id="statistics-cleared">0</strong><small>Paired with Pass</small></article>
+              <article><span>Unresolved faults</span><strong id="statistics-unresolved">0</strong><small>No paired Pass stored</small></article>
+              <article><span>Clearance rate</span><strong id="statistics-clearance-rate">0%</strong><small>Cleared ÷ fault activations</small></article>
+              <article class="statistics-period"><span>Stored event period</span><strong id="statistics-period">No stored events</strong><small>First event to latest event</small></article>
+            </div>
+          </section>
+
+          <section class="tab-panel database-panel" id="database-panel" role="tabpanel" aria-labelledby="database-tab" hidden>
+            <div class="database-intro">
+              <div>
+                <p class="eyebrow">PERSISTENT OFFLINE STORAGE</p>
+                <h3>Locomotive-wise Fleet Database</h3>
+                <p>Every imported TXT report and Event Log row is retained locally. Select a locomotive to fetch its records in exact date-and-time order.</p>
+              </div>
+              <div class="database-key-note">
+                <span>Database key structure</span>
+                <strong>Locomotive → Timestamp → Report → Row</strong>
+                <small>Collision-safe composite Event Log key</small>
+              </div>
+            </div>
+
+            <div class="database-metrics">
+              <article><span>Locomotives</span><strong id="database-metric-locomotives">0</strong></article>
+              <article><span>Stored reports</span><strong id="database-metric-reports">0</strong></article>
+              <article><span>Event records</span><strong id="database-metric-events">0</strong></article>
+              <article><span>Fault activations</span><strong id="database-metric-faults">0</strong></article>
+            </div>
+
+            <details class="database-schema-guide">
+              <summary>Understand Database Structure</summary>
+              <div class="database-schema-content">
+                <div class="schema-store">
+                  <span>STORE 01 · PRIMARY MASTER</span>
+                  <strong>locomotives</strong>
+                  <code>Primary key: locomotiveNumber</code>
+                  <p>One row per locomotive. Holds report/event/failure totals, first and latest timestamps, installed software versions, and last import time.</p>
+                </div>
+                <div class="schema-store">
+                  <span>STORE 02 · SOURCE ARCHIVE</span>
+                  <strong>reports</strong>
+                  <code>Primary key: reportKey</code>
+                  <p>Stores the complete raw TXT plus software version, Loading Log, Stored Fault Log, counts, import time, locomotive number, and first/latest Event Log timestamps.</p>
+                </div>
+                <div class="schema-store">
+                  <span>STORE 03 · EVENT FACT TABLE</span>
+                  <strong>events</strong>
+                  <code>Identity: locomotive + occurrence start second + event code + state</code>
+                  <p>Stores every accepted On, Fail, and Pass record, fault-clearance linkage, duration, mode, event details, source report, and all nine raw/scaled environment parameters.</p>
+                </div>
+                <div class="schema-rule">
+                  <strong>Duplicate prevention</strong>
+                  <p>Within one TXT and across later files, a row is skipped when locomotive number, paired fault-occurrence start second, event code, and state already exist. Different event codes in the same second remain valid.</p>
+                </div>
+                <div class="schema-rule">
+                  <strong>Fast retrieval indexes</strong>
+                  <p><code>byLocomotiveTime</code> fetches one locomotive latest-first; <code>byLocomotiveStateTime</code> supports state/date access; <code>byReport</code> links events back to raw TXT; report indexes support locomotive, import-time, and duplicate lookups.</p>
+                </div>
+              </div>
+            </details>
+
+            <div class="database-section-heading">
+              <div><strong>Stored locomotives</strong><span>Click a row to retrieve that locomotive’s Event Log</span></div>
+            </div>
+            <div class="table-scroll database-summary-wrap">
+              <table class="data-table database-summary-table">
+                <thead><tr><th>Locomotive No.</th><th>Reports</th><th>Events</th><th>Failures</th><th>First Event</th><th>Last Event</th><th>Software Versions</th><th></th></tr></thead>
+                <tbody id="database-locomotive-body"></tbody>
+              </table>
+            </div>
+
+            <div class="panel-toolbar database-toolbar">
+              <label class="search-control">
+                <span class="sr-only">Search stored Event Log</span>
+                <span aria-hidden="true">⌕</span>
+                <input id="database-search" type="search" placeholder="Search code, description, mode, state, or source file" />
+              </label>
+              <label class="select-control">
+                <span>Locomotive</span>
+                <select id="database-locomotive-select"><option value="">No stored locomotive</option></select>
+              </label>
+              <label class="select-control">
+                <span>State</span>
+                <select id="database-state-filter"><option value="all">All states</option><option value="fail">Fail</option><option value="pass">Pass</option><option value="on">On</option></select>
+              </label>
+              <label class="select-control">
+                <span>Date / time order</span>
+                <select id="database-sort"><option value="desc">Latest first</option><option value="asc">Oldest first</option></select>
+              </label>
+              <label class="select-control month-control">
+                <span>From month / year</span>
+                <input id="database-from-month" type="month" />
+              </label>
+              <label class="select-control month-control">
+                <span>To month / year</span>
+                <input id="database-to-month" type="month" />
+              </label>
+              <button class="period-clear-button" id="database-clear-period" type="button">Clear period</button>
+              <div class="export-actions">
+                <button class="export-button excel-button" id="export-database-excel" type="button">Download Excel</button>
+                <button class="export-button pdf-button" id="export-database-pdf" type="button">Download PDF</button>
+              </div>
+            </div>
+            <div class="result-note" id="database-result-note">Open the fleet database or import TXT reports to begin.</div>
+            <div class="table-scroll" id="database-event-wrap" hidden>
+              <table class="data-table chronological-fault-table database-event-table">
+                <thead><tr>
+                  <th><button class="database-sort-button" data-database-sort="serial" type="button">S/N <i>↕</i></button></th>
+                  <th><button class="database-sort-button" data-database-sort="timestamp" type="button">Event date <i>↕</i></button></th>
+                  <th><button class="database-sort-button" data-database-sort="timestamp" type="button">Event time <i>↕</i></button></th>
+                  <th class="database-fault-heading">
+                    <div class="database-heading-actions">
+                      <button class="database-sort-button" data-database-sort="event" type="button">Event <i>↕</i></button>
+                      <button class="database-fault-filter-button" id="database-fault-filter-button" type="button" aria-expanded="false" aria-controls="database-fault-filter-menu" title="Select event or fault types">☑</button>
+                    </div>
+                    <div class="database-fault-filter-menu" id="database-fault-filter-menu" hidden>
+                      <div class="check-filter-heading"><strong>Fault / Event filter</strong><small>All types are selected by default</small></div>
+                      <label class="select-all-option"><input id="database-fault-select-all" type="checkbox" checked /><span><strong>Select all</strong><small>Show every event and fault type</small></span></label>
+                      <div id="database-fault-options"></div>
+                    </div>
+                  </th>
+                  <th><button class="database-sort-button" data-database-sort="description" type="button">Description <i>↕</i></button></th>
+                  <th>State</th><th>Cleared at</th><th>Duration</th><th>Mode</th><th>Record</th>
+                  <th>MRT<small>kg/cm²</small></th><th>BPT<small>kg/cm²</small></th><th>BPalt<small>kg/cm²</small></th><th>ERT<small>kg/cm²</small></th><th>20TL<small>kg/cm²</small></th><th>20TT<small>kg/cm²</small></th>
+                  <th>10T<small>kg/cm²</small></th><th>BCT<small>kg/cm²</small></th><th>FLT<small>kg/cm²</small></th>
+                </tr></thead>
+                <tbody id="database-event-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="database-empty">
+              <strong>No stored fleet data</strong>
+              <p>Bulk upload one or more CCB TXT reports to populate the offline database.</p>
+            </div>
+          </section>
+
+          <section class="tab-panel guide-panel" id="guide-panel" role="tabpanel" aria-labelledby="guide-tab" hidden>
+            <div class="guide-intro">
+              <p class="eyebrow">FROM RAW FILE TO FINAL TABLE</p>
+              <h3>Understand the complete algorithm</h3>
+              <p>A short, auditable explanation of every rule applied by the analyser from file upload through parsing, scaling, sorting, storage, and export.</p>
+            </div>
+            <ol class="rule-list">
+              <li>
+                <span>01</span>
+                <div><strong>Separate the report sections</strong><p>Software version, Loading Log, stored Fault Log Data, and Event Log Data are parsed independently. Stored Fault Log counters are never mixed into Event Log occurrences.</p></div>
+              </li>
+              <li>
+                <span>02</span>
+                <div><strong>Capture the download software version</strong><p>The first value, such as <code>2537_240508</code>, is labelled as the software version used while downloading and saved locally with the report history.</p></div>
+              </li>
+              <li>
+                <span>03</span>
+                <div><strong>Parse and retain Loading Log history</strong><p>Installation number, date, time, user ID, filename, and the version extracted from the filename are stored as separate fields in chronological order.</p></div>
+              </li>
+              <li>
+                <span>04</span>
+                <div><strong>Parse stored Fault Log Data separately</strong><p>Current Status, Failure Count, Time Last Failed, Time Last Cleared, code, and description are retained exactly as a separate cumulative-status table.</p></div>
+              </li>
+              <li>
+                <span>05</span>
+                <div><strong>Read fixed Event Log columns</strong><p>Num, the nine pressure fields, Mode, State, Time Stamp, Event, and Description are mapped by their source positions. The unused Raw A2D, Trgt, and AW4 Press positions are skipped in the visible analysis.</p></div>
+              </li>
+              <li>
+                <span>06</span>
+                <div><strong>Make timestamp the primary variable</strong><p><code>MM:DD:YYYY::HH:MM:SS</code> is converted to a real datetime. All rows are sorted by it because the circular record number can wrap from 200 back to 001.</p></div>
+              </li>
+              <li>
+                <span>07</span>
+                <div><strong>Interpret State and pair fault episodes</strong><p>Fail begins a fault. The next Pass with the same Event and Description clears it and supplies duration. On is an operational event such as Power Up.</p></div>
+              </li>
+              <li>
+                <span>08</span>
+                <div><strong>Scale pressure values to kg/cm²</strong><p>MRT, BPT, BPalt, ERT, 20TL, 20TT, 10T, BCT, and FLT use <code>(raw ÷ 10) × 0.0703069579</code>. Example: raw 1231 → 123.1 PSI → 8.66 kg/cm². N/A becomes Not Available.</p></div>
+              </li>
+              <li>
+                <span>09</span>
+                <div><strong>Omit unused source fields</strong><p>Raw A2D, Trgt, and AW4 Press are not used for this analysis, so they are intentionally removed from visible tables and processed exports.</p></div>
+              </li>
+              <li>
+                <span>10</span>
+                <div><strong>Build the Event Log views</strong><p>The chronological view retains every On, Fail, and Pass row. Data Population groups all rows by Event + Description + State, so their counts remain separate.</p></div>
+              </li>
+              <li>
+                <span>11</span>
+                <div><strong>Store the fleet database</strong><p>Bulk-uploaded TXT reports are stored locally. Locomotive number is the fleet-master primary key; Event Log duplicate identity uses locomotive + fault occurrence start second + event code + state.</p></div>
+              </li>
+              <li>
+                <span>12</span>
+                <div><strong>Preserve future reference data</strong><p>The complete raw TXT, parsed Event Log, software version, Loading Log, and stored Fault Log are retained locally for efficient future retrieval.</p></div>
+              </li>
+              <li>
+                <span>13</span>
+                <div><strong>Export the processed result</strong><p>Excel and PDF downloads follow the active filters and use the chronological timestamps and converted kg/cm² values displayed by the analyser.</p></div>
+              </li>
+            </ol>
+            <div class="algorithm-formula">
+              <span>PRESSURE CONVERSION</span>
+              <strong>kg/cm² = (raw value ÷ 10) × 0.0703069579</strong>
+              <p>The original raw value and intermediate PSI value are retained in each converted cell’s tooltip.</p>
+            </div>
+            <div class="field-map">
+              <h4>Event Log abbreviations and units</h4>
+              <div id="field-map-grid"></div>
+            </div>
+            <div class="logic-legend">
+              <div><strong>Mode</strong><span>STDBY: standby · L C/I: Lead Cut In · L C/O: Lead Cut Out · TRAIL: trailing mode</span></div>
+              <div><strong>State</strong><span>Fail: fault activated · Pass: recovered/cleared · On: brake-system switching or power-up log</span></div>
+              <div><strong>Event</strong><span>Numeric Event code</span></div>
+              <div><strong>Description</strong><span>Event or fault description supplied by the CCB report</span></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="upload-result-backdrop" id="upload-result-backdrop" hidden>
+      <section class="import-result-notice" id="import-result-notice" role="alert">
+        <div><strong id="import-result-title">Upload result</strong><span id="import-result-detail"></span><small>Opening the result page in 2 seconds&hellip;</small></div>
+        <button id="close-import-result" type="button" aria-label="Open result page now">&times;</button>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="loco-picker-modal" hidden>
+      <section class="loading-log-modal loco-picker-modal" role="dialog" aria-modal="true" aria-labelledby="loco-picker-title">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">FETCH ALREADY STORED DATA</p>
+            <h2 id="loco-picker-title">View Locomotive Data</h2>
+            <p>Select a stored locomotive number and open its complete database records on a separate page.</p>
+          </div>
+          <button class="modal-close" id="close-loco-picker" type="button" aria-label="Close locomotive selector">×</button>
+        </header>
+        <div class="loco-picker-body">
+          <label>
+            <span>Stored locomotive number</span>
+            <select id="loco-picker-select"><option value="">No stored locomotives</option></select>
+          </label>
+          <div class="loco-picker-summary" id="loco-picker-summary">
+            <span>Select a locomotive to see its stored-data summary.</span>
+          </div>
+        </div>
+        <div class="empty-state loco-picker-empty" id="loco-picker-empty" hidden>
+          <strong>No locomotive data is stored</strong>
+          <p>Bulk upload CCB TXT reports first, then return to this viewer.</p>
+        </div>
+        <div class="modal-footer loco-picker-footer">
+          <span>The new page will retrieve data from the same offline database.</span>
+          <div>
+            <button class="secondary-button" id="cancel-loco-picker" type="button">Cancel</button>
+            <button class="export-button" id="open-loco-page" type="button">Open Loco Data</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="loading-log-modal" hidden>
+      <section class="loading-log-modal" role="dialog" aria-modal="true" aria-labelledby="loading-log-title">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">SOFTWARE INSTALLATION HISTORY</p>
+            <h2 id="loading-log-title">Loading Log</h2>
+            <p>Versions installed on the CCB system, retained locally for future reference.</p>
+          </div>
+          <button class="modal-close" id="close-loading-log" type="button" aria-label="Close Loading Log">×</button>
+        </header>
+        <div class="modal-toolbar">
+          <label>
+            <span>Saved report</span>
+            <select id="loading-log-history-select"></select>
+          </label>
+          <div class="modal-version-summary">
+            <span>Downloaded with software</span>
+            <strong id="modal-software-version">—</strong>
+          </div>
+        </div>
+        <div class="loading-log-context" id="loading-log-context"></div>
+        <div class="table-scroll" id="loading-log-table-wrap">
+          <table class="data-table loading-log-table">
+            <thead>
+              <tr><th>S/N</th><th>Installation date</th><th>Installation time</th><th>User ID</th><th>Filename</th><th>Software version</th></tr>
+            </thead>
+            <tbody id="loading-log-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="loading-log-empty" hidden>
+          <strong>No Loading Log records available</strong>
+          <p>This report contains a Loading Log section but no installed-version rows.</p>
+        </div>
+        <div class="modal-footer">
+          <span id="loading-log-record-summary">0 installed versions</span>
+          <span>Saved in this browser</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="stored-fault-log-modal" hidden>
+      <section class="loading-log-modal stored-fault-modal" role="dialog" aria-modal="true" aria-labelledby="stored-fault-log-title">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">SEPARATE STORED STATUS DATA</p>
+            <h2 id="stored-fault-log-title">Stored Fault Log Data</h2>
+            <p>Communication and transducer fault status/counters recorded at the time of download.</p>
+          </div>
+          <button class="modal-close" id="close-stored-fault-log" type="button" aria-label="Close Stored Fault Log Data">×</button>
+        </header>
+        <div class="separation-notice">
+          <strong>Not Event Log Data</strong>
+          <span>This table is parsed only from the report’s separate Fault Log Data section. It is never added to Event Log occurrence counts.</span>
+        </div>
+        <div class="modal-toolbar">
+          <label>
+            <span>Saved report</span>
+            <select id="stored-fault-history-select"></select>
+          </label>
+          <div class="modal-version-summary">
+            <span>Downloaded with software</span>
+            <strong id="stored-fault-modal-version">—</strong>
+          </div>
+        </div>
+        <div class="loading-log-context" id="stored-fault-context"></div>
+        <div class="table-scroll" id="stored-fault-table-wrap">
+          <table class="data-table stored-fault-table">
+            <thead>
+              <tr><th>S/N</th><th>Current status</th><th>Failure count</th><th>Time last failed</th><th>Time last cleared</th><th>Fault code</th><th>Fault description</th></tr>
+            </thead>
+            <tbody id="stored-fault-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="stored-fault-empty" hidden>
+          <strong>No Stored Fault Log records available</strong>
+          <p>This report does not contain valid rows in its Fault Log Data section.</p>
+        </div>
+        <div class="modal-footer">
+          <span id="stored-fault-record-summary">0 stored fault types</span>
+          <span>Saved separately in this browser</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="matrix-occurrence-modal" hidden>
+      <section class="loading-log-modal matrix-occurrence-modal" role="dialog" aria-modal="true" aria-labelledby="matrix-occurrence-title">
+        <header class="modal-header">
+          <div>
+            <p class="eyebrow">FAULT OCCURRENCE DATES</p>
+            <h2 id="matrix-occurrence-title">Fault occurrence details</h2>
+            <p id="matrix-occurrence-context">Select a non-zero matrix count to view its dates.</p>
+          </div>
+          <button class="modal-close" id="close-matrix-occurrence" type="button" aria-label="Close fault occurrence dates">&times;</button>
+        </header>
+        <div class="table-scroll matrix-occurrence-wrap">
+          <table class="data-table matrix-occurrence-table">
+            <thead><tr><th>S/N</th><th>Fault date</th><th>Fault time</th><th>Mode</th><th>Record</th><th>Source file</th></tr></thead>
+            <tbody id="matrix-occurrence-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="matrix-occurrence-empty" hidden>
+          <strong>No matching fault dates</strong>
+          <p>The stored Event Log does not contain matching Fail rows.</p>
+        </div>
+        <div class="modal-footer">
+          <span id="matrix-occurrence-summary">0 fault occurrences</span>
+          <span>Latest occurrence first</span>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <span>CCB Fault Analyser</span>
+      <span>Local browser utility · no report data is uploaded</span>
+    </footer>
+
+    <script src="parser.js"></script>
+    <script src="database.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

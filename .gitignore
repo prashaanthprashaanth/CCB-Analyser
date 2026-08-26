@@ -1,0 +1,7 @@
+.ui-test-*/
+*.new.exe
+*.tmp
+*.log
+_upload_*_test.py
+__pycache__/
+*.pyc
