@@ -1,47 +1,82 @@
 # CCB Fault Analyser
 
-An offline browser tool for producing chronological CCB Event Log analysis with environment data while retaining Loading Log and Stored Fault Log history separately.
+A shared LAN web application for chronological CCB Event Log analysis. Every user opens the same URL, and all valid uploads are added to the same SQLite fleet database on the server computer.
 
-## Open the analyser
+## Start the LAN website
 
-Double-click `index.html` or run `CCB Fault Analyser.exe`, then drop one or several CCB `.txt` reports onto the upload area. No internet connection is required; reports are processed locally.
+Requirements: Windows and Python 3.10 or later on the server computer.
 
-## Fleet database
+1. Once only, double-click `setup_lan_firewall.cmd` and approve the Administrator prompt.
+2. Double-click `CCB Fault Analyser.exe` or `start_lan_server.cmd` on the server computer.
+3. Keep the server computer powered on and connected to the LAN.
+4. Open `http://10.189.34.5:8080/` in a browser on any LAN computer.
+
+The EXE starts the server in the background and opens `http://127.0.0.1:8080/` on the server computer. The CMD file keeps a visible server console open. PowerShell users can also run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\start_lan_server.ps1
+```
+
+To stop a background server started by the EXE, double-click `stop_lan_server.cmd`.
+
+Do not open `index.html` directly. The page must be opened through the HTTP URL so it can reach the shared database API.
+
+The server listens on all network interfaces (`0.0.0.0`) at port `8080`. The server computer must actually own the IP address `10.189.34.5`, and Windows Firewall must allow inbound TCP port `8080` on the Private network profile. If the server IP changes, pass the new address to the PowerShell launcher:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\start_lan_server.ps1 -LanIp "10.189.34.27"
+```
+
+## Existing and future database data
+
+- `ccb_fleet.sqlite` is the single master database used by the web server.
+- Existing rows are retained; startup does not rebuild or clear the database.
+- The initial shared database contains 71 locomotives, 168 reports, and 28,000 Event Log rows.
+- New valid uploads append reports and non-duplicate events to this same file, so all LAN users see the expanded data.
+- Complete raw TXT content, Event Log rows, Loading Log, Stored Fault Log, software version, source client, and import audit details are retained.
+- SQLite WAL mode permits reads while an upload is being written. Upload writes are serialized to keep duplicate checking atomic.
+- Event duplicate identity is locomotive number + paired fault-occurrence start second + event code + state.
+- Exact duplicate files and fully overlapping reports are rejected without adding a second report.
+
+Before the conversion, the original database was copied to `backups/ccb_fleet_before_lan_server.sqlite`. Make regular copies of `ccb_fleet.sqlite` while the server is stopped as the database grows.
+
+## Docker deployment
+
+The application has no third-party Python packages. On a Windows or Linux server with Docker and Docker Compose installed, copy this project directory to the server and run:
+
+```text
+docker compose up -d --build
+```
+
+Open `http://SERVER-IP:8080/` from another LAN computer. Check status and logs with:
+
+```text
+docker compose ps
+docker compose logs -f analyser
+```
+
+The existing `ccb_fleet.sqlite` is copied into the `ccb-fleet-data` named volume only when that volume is first created. All later uploads remain in that volume across `docker compose down`, image rebuilds, and container replacement. Do not run `docker compose down -v`, because `-v` intentionally deletes the database volume.
+
+To use a different host port, set `CCB_PORT` before starting. For example, PowerShell can use `$env:CCB_PORT=8090` and then `docker compose up -d --build`.
+
+For a trusted LAN, users can connect directly to the published port. For internet exposure, place the app behind an authenticated HTTPS reverse proxy; the built-in server intentionally does not provide user accounts or TLS.
+
+## Fleet database behavior
 
 - Single and bulk TXT uploads are supported.
-- Locomotive number is read from the report text first and falls back to the filename only when the report value is unavailable.
-- Parsed reports, their complete raw TXT, Event Log rows, Loading Log, Stored Fault Log, and software version are persisted in browser IndexedDB.
-- The `locomotives` store uses locomotive number as its primary key.
-- Event duplicate identity uses locomotive number, paired fault-occurrence start second, event code, and state.
-- A locomotive-and-timestamp index retrieves each locomotive’s events chronologically.
-- Fleet retrieval defaults to latest date/time first, followed by progressively older records.
-- Every database Event Log record includes MRT, BPT, BPalt, ERT, 20TL, 20TT, 10T, BCT, and FLT as raw values and converted kg/cm² environment parameters.
-- Duplicate identities are skipped within one TXT and across later overlapping files; different faults in the same second remain valid.
-- Fleet Database and Analysis of Data can be opened later from the left Options drawer without importing the files again.
-- The Analysis of Data fault matrix includes a Fault Name checkbox filter; every fault is selected by default and deselected faults are omitted while visible ranks and totals are recalculated.
+- Locomotive number is read from report text first, then the filename, then the uploaded folder name.
+- Fleet retrieval defaults to latest date/time first.
+- Every stored Event Log row includes MRT, BPT, BPalt, ERT, 20TL, 20TT, 10T, BCT, and FLT in raw and converted kg/cm² form.
+- The Fleet Database and Analysis of Data views read live data from the shared server.
+- Fault matrices and totals are recalculated from all stored reports.
 
 ## Tabulation rules
 
 - Only rows in the `Event Log Data` section are analysed.
 - Internal timestamps are parsed as `MM:DD:YYYY::HH:MM:SS`.
-- The first report value (for example, `2537_240508`) is stored as the software version used while downloading the data.
-- The current software version is displayed at the top-right and its recent file history is retained locally in browser storage.
-- Loading Log rows are parsed into installation date, time, user ID, filename, and installed software version, then saved in a separate local history.
-- Stored `Fault Log Data` is kept separate from `Event Log Data` and saved with its status, cumulative count, last-failed time, and last-cleared time.
-- Rows are sorted by timestamp because the record number is a circular counter.
-- A `Fail` row starts a fault occurrence.
-- The next `Pass` with the same Event code and Description clears that occurrence.
-- Every Event Log record is displayed as one row in the main chronological table, including `On`, `Fail`, and `Pass` states.
-- The main table can be sorted by timestamp, record, event, description, state, or mode.
-- Its checkbox filter includes every State and Event type, with **Select all** enabled by default.
-- All nine used pressure readings are visible directly in that row.
-- Failure clearance and duration are attached only to `Fail` rows; other event states remain unchanged.
-- Repeated logical rows with the same locomotive, occurrence start second, event code, and state are stored only once.
-- **Data Population** includes the complete Event Log and groups by Event code, Description, and State.
-- Power Up (`On`), fault activation (`Fail`), and fault clearance (`Pass`) are counted separately.
-- Click a populated event row to see every occurrence and its nine pressure readings.
-- MRT, BPT, BPalt, ERT, 20TL, 20TT, 10T, BCT, and FLT are converted with `kg/cm² = (raw ÷ 10) × 0.0703069579`.
-- Raw A2D, Trgt, and AW4 Press are retained by the source parser but omitted from visible analysis because they are not used; `N/A` pressure values display as `Not Available`.
-- The **Understand Algorithm** tab documents every parsing, sorting, pairing, scaling, population, storage, and export rule.
-
-The filtered Event Log Faults, Data Population, and full Event Log tables can be downloaded only as genuine Excel (`.xlsx`) workbooks or PDF documents.
+- A `Fail` row starts a fault occurrence; the next matching `Pass` clears it.
+- Rows are sorted by timestamp because the record number is circular.
+- Power Up (`On`), activation (`Fail`), and clearance (`Pass`) rows are counted separately.
+- Pressure conversion is `kg/cm² = (raw ÷ 10) × 0.0703069579`.
+- Raw A2D, Trgt, and AW4 Press are retained but omitted from visible analysis.
+- Filtered tables can be downloaded as genuine Excel (`.xlsx`) workbooks or PDF documents.

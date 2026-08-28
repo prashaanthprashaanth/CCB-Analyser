@@ -5,3 +5,6 @@
 _upload_*_test.py
 __pycache__/
 *.pyc
+backups/
+ccb_fleet.sqlite-wal
+ccb_fleet.sqlite-shm

@@ -1,0 +1,11 @@
+**
+!Dockerfile
+!server.py
+!index.html
+!styles.css
+!parser.js
+!database.js
+!app.js
+!ccb_fleet.sqlite
+!DATABASE_FOR_APPROVAL/
+!DATABASE_FOR_APPROVAL/import_ccb_to_sqlite.py

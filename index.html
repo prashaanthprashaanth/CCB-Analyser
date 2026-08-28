@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Offline date-wise analyser for CCB brake system Event Log text reports."
+      content="Shared LAN analyser for CCB brake system Event Log text reports."
     />
     <title>CCB Fault Analyser</title>
     <link rel="stylesheet" href="styles.css" />
@@ -24,7 +24,7 @@
         </span>
       </a>
       <div class="header-status">
-        <span class="privacy-label"><i></i> Offline processing</span>
+        <span class="privacy-label"><i></i> Shared LAN database</span>
       </div>
     </header>
 
@@ -80,7 +80,7 @@
               <span>View Existing Data</span>
               <small>Open stored locomotives and select one to view its Event Log</small>
             </button>
-            <p>Single or bulk TXT upload · processed and stored only in this browser</p>
+            <p>Single or bulk TXT upload · stored in the shared server database for all LAN users</p>
           </div>
         </div>
         <div class="upload-options">
@@ -391,9 +391,9 @@
           <section class="tab-panel database-panel" id="database-panel" role="tabpanel" aria-labelledby="database-tab" hidden>
             <div class="database-intro">
               <div>
-                <p class="eyebrow">PERSISTENT OFFLINE STORAGE</p>
+                <p class="eyebrow">PERSISTENT SHARED STORAGE</p>
                 <h3>Locomotive-wise Fleet Database</h3>
-                <p>Every imported TXT report and Event Log row is retained locally. Select a locomotive to fetch its records in exact date-and-time order.</p>
+                <p>Every imported TXT report and Event Log row is retained in the shared server database. Select a locomotive to fetch its records in exact date-and-time order.</p>
               </div>
               <div class="database-key-note">
                 <span>Database key structure</span>
@@ -415,18 +415,18 @@
                 <div class="schema-store">
                   <span>STORE 01 · PRIMARY MASTER</span>
                   <strong>locomotives</strong>
-                  <code>Primary key: locomotiveNumber</code>
-                  <p>One row per locomotive. Holds report/event/failure totals, first and latest timestamps, installed software versions, and last import time.</p>
+                  <code>Unique key: locomotive_number</code>
+                  <p>One row per locomotive. Report/event/failure totals, first and latest timestamps, installed software versions, and last import time are calculated from its related rows.</p>
                 </div>
                 <div class="schema-store">
                   <span>STORE 02 · SOURCE ARCHIVE</span>
                   <strong>reports</strong>
-                  <code>Primary key: reportKey</code>
-                  <p>Stores the complete raw TXT plus software version, Loading Log, Stored Fault Log, counts, import time, locomotive number, and first/latest Event Log timestamps.</p>
+                  <code>Primary key: report_id</code>
+                  <p>Stores the complete raw TXT plus software version, counts, import time, locomotive link, and first/latest Event Log timestamps. Loading Log and Stored Fault Log rows are retained in related tables.</p>
                 </div>
                 <div class="schema-store">
                   <span>STORE 03 · EVENT FACT TABLE</span>
-                  <strong>events</strong>
+                  <strong>event_occurrences + event_log</strong>
                   <code>Identity: locomotive + occurrence start second + event code + state</code>
                   <p>Stores every accepted On, Fail, and Pass record, fault-clearance linkage, duration, mode, event details, source report, and all nine raw/scaled environment parameters.</p>
                 </div>
@@ -436,7 +436,7 @@
                 </div>
                 <div class="schema-rule">
                   <strong>Fast retrieval indexes</strong>
-                  <p><code>byLocomotiveTime</code> fetches one locomotive latest-first; <code>byLocomotiveStateTime</code> supports state/date access; <code>byReport</code> links events back to raw TXT; report indexes support locomotive, import-time, and duplicate lookups.</p>
+                  <p><code>ix_occurrences_loco_time</code> and <code>ix_event_log_time</code> fetch chronological locomotive data; report and occurrence indexes support source retrieval, analysis, and duplicate lookups.</p>
                 </div>
               </div>
             </details>
@@ -511,7 +511,7 @@
             </div>
             <div class="empty-state" id="database-empty">
               <strong>No stored fleet data</strong>
-              <p>Bulk upload one or more CCB TXT reports to populate the offline database.</p>
+              <p>Bulk upload one or more CCB TXT reports to populate the shared database.</p>
             </div>
           </section>
 
@@ -564,11 +564,11 @@
               </li>
               <li>
                 <span>11</span>
-                <div><strong>Store the fleet database</strong><p>Bulk-uploaded TXT reports are stored locally. Locomotive number is the fleet-master primary key; Event Log duplicate identity uses locomotive + fault occurrence start second + event code + state.</p></div>
+                <div><strong>Store the fleet database</strong><p>Bulk-uploaded TXT reports are stored on the LAN server for every user. Locomotive number is the fleet-master primary key; Event Log duplicate identity uses locomotive + fault occurrence start second + event code + state.</p></div>
               </li>
               <li>
                 <span>12</span>
-                <div><strong>Preserve future reference data</strong><p>The complete raw TXT, parsed Event Log, software version, Loading Log, and stored Fault Log are retained locally for efficient future retrieval.</p></div>
+                <div><strong>Preserve future reference data</strong><p>The complete raw TXT, parsed Event Log, software version, Loading Log, and stored Fault Log are retained in the shared SQLite database for efficient future retrieval.</p></div>
               </li>
               <li>
                 <span>13</span>
@@ -626,7 +626,7 @@
           <p>Bulk upload CCB TXT reports first, then return to this viewer.</p>
         </div>
         <div class="modal-footer loco-picker-footer">
-          <span>The new page will retrieve data from the same offline database.</span>
+          <span>The new page will retrieve data from the same shared server database.</span>
           <div>
             <button class="secondary-button" id="cancel-loco-picker" type="button">Cancel</button>
             <button class="export-button" id="open-loco-page" type="button">Open Loco Data</button>
@@ -641,7 +641,7 @@
           <div>
             <p class="eyebrow">SOFTWARE INSTALLATION HISTORY</p>
             <h2 id="loading-log-title">Loading Log</h2>
-            <p>Versions installed on the CCB system, retained locally for future reference.</p>
+            <p>Versions installed on the CCB system, retained with imported reports for future reference.</p>
           </div>
           <button class="modal-close" id="close-loading-log" type="button" aria-label="Close Loading Log">×</button>
         </header>
@@ -748,7 +748,7 @@
 
     <footer>
       <span>CCB Fault Analyser</span>
-      <span>Local browser utility · no report data is uploaded</span>
+      <span>LAN web application · one shared server database</span>
     </footer>
 
     <script src="parser.js"></script>

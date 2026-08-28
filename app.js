@@ -1012,7 +1012,7 @@
       return;
     }
     $("#database-panel").classList.add("has-selected-locomotive");
-    $("#database-result-note").textContent = `Fetching Locomotive ${locomotiveNumber} from the offline database…`;
+    $("#database-result-note").textContent = `Fetching Locomotive ${locomotiveNumber} from the shared database…`;
     state.databaseEvents = await FleetDatabase.getEvents(locomotiveNumber);
     populateDatabaseFaultFilter(state.databaseEvents);
     elements.databaseLocomotiveSelect.value = locomotiveNumber;
@@ -1237,8 +1237,8 @@
       if (!state.databaseLocomotives.length) {
         elements.databaseEmpty.hidden = false;
         elements.databaseEmpty.querySelector("strong").textContent = "No stored fleet data";
-        elements.databaseEmpty.querySelector("p").textContent = "Bulk upload one or more CCB TXT reports to populate the offline database.";
-        $("#database-result-note").textContent = "The offline fleet database is ready for TXT reports.";
+        elements.databaseEmpty.querySelector("p").textContent = "Bulk upload one or more CCB TXT reports to populate the shared database.";
+        $("#database-result-note").textContent = "The shared fleet database is ready for TXT reports.";
       } else {
         elements.databaseEmpty.hidden = true;
         $("#database-result-note").textContent = "All stored locomotives are listed. Select a locomotive number below to display only its Event Log data.";
@@ -1254,7 +1254,7 @@
     const summary = await refreshDatabaseView(preferredLocomotive);
     setMetricLabels(true);
     elements.reportTitle.textContent = "Fleet Database";
-    elements.reportMeta.textContent = `${summary.reportCount.toLocaleString("en-IN")} stored report${summary.reportCount === 1 ? "" : "s"} · Persistent offline IndexedDB storage`;
+    elements.reportMeta.textContent = `${summary.reportCount.toLocaleString("en-IN")} stored report${summary.reportCount === 1 ? "" : "s"} · Shared server SQLite storage`;
     elements.softwareVersion.textContent = "Multiple reports";
     $("#metric-faults").textContent = summary.faultCount.toLocaleString("en-IN");
     $("#metric-dates").textContent = summary.locomotiveCount.toLocaleString("en-IN");
@@ -1275,7 +1275,7 @@
     const selected = state.databaseLocomotives.find((item) => item.locomotiveNumber === locomotiveNumber);
     if (!selected) {
       elements.reportTitle.textContent = `Locomotive ${locomotiveNumber} not found`;
-      elements.reportMeta.textContent = "This locomotive number is not present in the offline database.";
+      elements.reportMeta.textContent = "This locomotive number is not present in the shared database.";
       return;
     }
     document.body.classList.add("loco-data-page");
@@ -2091,7 +2091,7 @@
       }
     })
     .catch(() => {
-      elements.headerDatabaseButton.title = "The offline database is unavailable in this browser.";
-      elements.headerViewLocoButton.title = "The offline database is unavailable in this browser.";
+      elements.headerDatabaseButton.title = "The shared database server is unavailable.";
+      elements.headerViewLocoButton.title = "The shared database server is unavailable.";
     });
 })();
