@@ -1629,46 +1629,70 @@
   }
 
   function downloadPdf(fileName, title, headers, rows) {
-    const bodyLines = [
-      `${title} | ${state.report ? state.report.fileName : "CCB report"}`,
-      `Generated ${dateTimeFormatter.format(new Date())}`,
-      "",
-      headers.join(" | "),
-      "-".repeat(126),
-    ];
+    const generatedAt = new Date();
+    const sourceLabel = state.report?.fileName || "Shared fleet database";
+    const columnHeaderLines = wrapPdfLine(headers.join(" | "));
+    const bodyLines = [];
     rows.forEach((row, index) => {
       const wrapped = wrapPdfLine(row.join(" | "));
       bodyLines.push(`${index + 1}. ${wrapped[0]}`, ...wrapped.slice(1).map((line) => `   ${line}`));
     });
+    if (!bodyLines.length) bodyLines.push("No matching rows were available when this export was created.");
 
-    const linesPerPage = 46;
+    const linesPerPage = 39;
     const pages = [];
     for (let index = 0; index < bodyLines.length; index += linesPerPage) pages.push(bodyLines.slice(index, index + linesPerPage));
     const objects = [];
-    const pageIds = pages.map((_, index) => 4 + index * 2);
+    const pageIds = pages.map((_, index) => 5 + index * 2);
     objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
     objects[2] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>`;
-    objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>";
+    objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>";
+    const pdfDate = [
+      generatedAt.getFullYear(),
+      String(generatedAt.getMonth() + 1).padStart(2, "0"),
+      String(generatedAt.getDate()).padStart(2, "0"),
+      String(generatedAt.getHours()).padStart(2, "0"),
+      String(generatedAt.getMinutes()).padStart(2, "0"),
+      String(generatedAt.getSeconds()).padStart(2, "0"),
+    ].join("");
+    objects[4] = `<< /Title (${pdfSafeText(title)}) /Creator (CCB Fault Analyser) /Producer (CCB Fault Analyser PDF Export) /CreationDate (D:${pdfDate}) >>`;
     pages.forEach((pageLines, pageIndex) => {
       const pageId = pageIds[pageIndex];
       const contentId = pageId + 1;
-      const displayLines = [`${title}  |  Page ${pageIndex + 1} of ${pages.length}`, ...pageLines];
-      const commands = `BT\n/F1 7.5 Tf\n36 560 Td\n11 TL\n${displayLines.map((line) => `(${pdfSafeText(line)}) Tj\nT*`).join("")}ET`;
+      const displayLines = [
+        `${title}  |  Page ${pageIndex + 1} of ${pages.length}`,
+        `${sourceLabel}  |  ${rows.length.toLocaleString("en-IN")} exported row${rows.length === 1 ? "" : "s"}  |  Generated ${dateTimeFormatter.format(generatedAt)}`,
+        "",
+        ...columnHeaderLines,
+        "-".repeat(126),
+        ...pageLines,
+      ];
+      const textCommands = displayLines.map((line) => `(${pdfSafeText(line)}) Tj\nT*\n`).join("");
+      const commands = `q\n1 1 1 rg\n0 0 842 595 re\nf\nQ\nBT\n/F1 7.5 Tf\n0 0 0 rg\n36 560 Td\n11 TL\n${textCommands}ET`;
       objects[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`;
-      objects[contentId] = `<< /Length ${commands.length} >>\nstream\n${commands}\nendstream`;
+      objects[contentId] = `<< /Length ${new TextEncoder().encode(commands).length} >>\nstream\n${commands}\nendstream`;
     });
 
-    let pdf = "%PDF-1.4\n%CCB-REPORT\n";
+    const encoder = new TextEncoder();
+    const header = combineBytes([
+      encoder.encode("%PDF-1.4\n%"),
+      new Uint8Array([0xe2, 0xe3, 0xcf, 0xd3]),
+      encoder.encode("\n"),
+    ]);
+    const pdfParts = [header];
     const offsets = [0];
+    let byteOffset = header.length;
     for (let id = 1; id < objects.length; id += 1) {
-      offsets[id] = pdf.length;
-      pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+      const objectBytes = encoder.encode(`${id} 0 obj\n${objects[id]}\nendobj\n`);
+      offsets[id] = byteOffset;
+      pdfParts.push(objectBytes);
+      byteOffset += objectBytes.length;
     }
-    const xrefOffset = pdf.length;
-    pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
-    for (let id = 1; id < objects.length; id += 1) pdf += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
-    pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-    downloadBlob(fileName, new Blob([pdf], { type: "application/pdf" }));
+    let xref = `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+    for (let id = 1; id < objects.length; id += 1) xref += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
+    xref += `trailer\n<< /Size ${objects.length} /Root 1 0 R /Info 4 0 R >>\nstartxref\n${byteOffset}\n%%EOF\n`;
+    pdfParts.push(encoder.encode(xref));
+    downloadBlob(fileName, new Blob([combineBytes(pdfParts)], { type: "application/pdf" }));
   }
 
   function reportBaseName() {

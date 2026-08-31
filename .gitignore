@@ -8,3 +8,4 @@ __pycache__/
 backups/
 ccb_fleet.sqlite-wal
 ccb_fleet.sqlite-shm
+export_test_results/
